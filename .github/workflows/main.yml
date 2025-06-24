@@ -142,11 +142,7 @@ jobs:
     timeout-minutes: 60
     steps:
     - name: "Release Build Type"
-      if: startsWith(github.ref, 'refs/tags/')
       run: echo "BUILD_TYPE=Release" >> $GITHUB_ENV
-    - name: "Debug Build Type"
-      if: startsWith(github.ref, 'refs/tags/') != true
-      run: echo "BUILD_TYPE=Debug" >> $GITHUB_ENV
 
     - uses: actions/checkout@v4
       with:
@@ -251,12 +247,18 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Package
-      if: startsWith(github.ref, 'refs/tags/')
       run: |
         mkdir libsimple-linux-${{ matrix.os }}
         cp -r src/libsimple.so test/dict/ libsimple-linux-${{ matrix.os }}/
         zip -r libsimple-linux-${{ matrix.os }}.zip libsimple-linux-${{ matrix.os }}
       working-directory: "${{ github.workspace }}/build"
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: libsimple-linux-${{ matrix.os }}
+        path: "${{ github.workspace }}/build/libsimple-linux-${{ matrix.os }}.zip"
+
     - name: Release without changelog
       if: ${{ startsWith(github.ref, 'refs/tags/') && matrix.os != 'ubuntu-latest' }}
       uses: softprops/action-gh-release@v2
@@ -287,11 +289,7 @@ jobs:
     needs: Linux
     steps:
     - name: "Release Build Type"
-      if: startsWith(github.ref, 'refs/tags/')
       run: echo "BUILD_TYPE=Release" >> $GITHUB_ENV
-    - name: "Debug Build Type"
-      if: startsWith(github.ref, 'refs/tags/') != true
-      run: echo "BUILD_TYPE=Debug" >> $GITHUB_ENV
 
     - uses: actions/checkout@v4
       with:
@@ -353,13 +351,24 @@ jobs:
     #     python db_connector.py "${{ github.workspace }}/../../_temp/macos/src/libsimple"
   
     - name: Package
-      if: startsWith(github.ref, 'refs/tags/')
       run: |
         mkdir libsimple-osx-x64
         sudo xattr -r -d com.apple.quarantine src/libsimple.dylib
         cp -r src/libsimple.dylib test/dict libsimple-osx-x64/
         zip -r libsimple-osx-x64.zip libsimple-osx-x64
       working-directory: "${{ github.workspace }}/../../_temp/macos"
+
+    - name: Move artifact to uploadable location
+      working-directory: ${{ github.workspace }}/../../_temp/macos
+      run: |
+        mkdir -p ${{ github.workspace }}/artifacts
+        cp libsimple-osx-x64.zip ${{ github.workspace }}/artifacts/
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: libsimple-osx-x64
+        path: "${{ github.workspace }}/artifacts/libsimple-osx-x64.zip"
 
     - name: Release
       if: startsWith(github.ref, 'refs/tags/')
